@@ -18,6 +18,7 @@
         currentVideo: null, //current playing video
         loadedAPI: false, //specify if the YouTube API have loaded
         isLoop: true, //specify if current video should to loop
+        musicMode: false, //specify if user turn on music mode
         cued: false //specify if playing video at first
     };
 
@@ -29,13 +30,13 @@
             $elem.addClass('active');
             
             if ($.isFunction(onAct)) {
-                onAct();
+                onAct.call($elem);
             }
         } else {
             $elem.removeClass('active');
 
             if ($.isFunction(offAct)) {
-                offAct();
+                offAct.call($elem);
             }
         }
 
@@ -61,7 +62,7 @@
             });
 
         //hide search content at the beginning
-        $('#searchcontent', $container).hide();;
+        $('#searchcontent', $container).hide();
 
         $('#playcontent', $container)
             .find('#playin')
@@ -113,6 +114,23 @@
                         $('#time-interval', $container).show();
                     }, function () {
                         $('#time-interval', $container).hide();
+                    });
+                })
+            .end()
+            .find('.fa-music')
+                .on('click', function () {
+                    loopedtube.toggleButtonActive($(this), function () {
+                        loopedtube.musicMode = true;
+
+                        if (loopedtube.player.getPlayerState() > -1) {
+                            loopedtube.player.setPlaybackQuality('small');
+                        }
+                    }, function () {
+                        loopedtube.musicMode = false;
+
+                        if (loopedtube.player.getPlayerState() > -1) {
+                            loopedtube.player.setPlaybackQuality('default');
+                        }
                     });
                 });
 
@@ -173,10 +191,11 @@
 
     //cue YouTube video to ready to play
     loopedtube.cueVideo = function () {
-        var videoId = this.cuedVideo && this.cuedVideo.id;
+        var cuedVideo = this.cuedVideo,
+            videoId = cuedVideo.id;
 
         if (videoId) {
-            loopedtube.player.cueVideoById(videoId);
+            loopedtube.player.cueVideoById(videoId, cuedVideo.startTime, (loopedtube.musicMode) ? 'small' : 'default');
         }
         
         return this;

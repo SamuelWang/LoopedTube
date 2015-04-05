@@ -82,6 +82,7 @@ body {
 
 #footer .footer-container .footer-links {
     padding: 5px 0;
+    text-align: center;
 }
 
 #footer .footer-links a {
@@ -97,6 +98,7 @@ body {
 
 #footer .footer-container .copyright {
     color: #999;
+    text-align: center;
 }
 
 /*-------------------------------
@@ -158,8 +160,8 @@ body {
 #player-funcs {
     background-color: #333;
     border-radius: 25px;
-    min-width: 150px;
-    padding: 5px 20px;
+    min-width: 120px;
+    padding: 5px 30px;
     text-align: left;
 }
 
