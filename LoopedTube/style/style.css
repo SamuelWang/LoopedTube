@@ -58,7 +58,8 @@ body {
 /* content */
 .content {
     text-align: center;
-    margin-bottom: 20px;
+    margin: 0 auto 20px;
+    max-width: 860px;
 }
 
 .content .box {
@@ -138,7 +139,7 @@ body {
 #searchin {
     color: #999;
     font-size: 1.2em;
-    width: 600px;
+    width: 650px;
 }
 
 .box input {
@@ -207,4 +208,56 @@ body {
     color: #ff4500;
     background-color: #ffdc3e;
     border: 1px solid #ffaf3e;
+}
+
+#recent-video .box {
+    width: 100%;
+}
+
+#recent-video .recent-video-header {
+    border-bottom: 2px solid #e1e1e1;
+    font-size: 1.2em;
+    font-weight: bold;
+    padding: 5px 0;
+}
+
+#recent-video .recent-video-header .recent-video-header-caption {
+    float: left;
+}
+
+#recent-video .recent-video-header .recent-video-header-trash {
+    float: right;
+}
+
+#recent-video .recent-video-header .recent-video-header-trash:hover {
+    color: #dc143c;
+    cursor: pointer;
+}
+
+#recent-video .recent-video-list {
+    padding: 5px 0;
+}
+
+#recent-video .recent-video-list .recent-video-list-record {
+    text-align: left;
+    margin-bottom: 10px;
+}
+
+#recent-video .recent-video-list .recent-video-list-record:hover {
+    background-color: #f9f9f9;
+    cursor: pointer;
+}
+
+#recent-video .recent-video-list .recent-video-list-record .recent-video-list-record-img {
+    display: inline-block;
+    height: 90px;
+    margin-right: 10px;
+    vertical-align: top;
+    width: 120px;
+}
+
+#recent-video .recent-video-list .recent-video-list-record .recent-video-list-record-title {
+    display: inline-block;
+    margin-top: 5px;
+    vertical-align: top;
 }

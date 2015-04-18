@@ -52,6 +52,11 @@ function onPlayerReady() {
 
                     loopedtube.cued = false;
                     loopedtube.startWatchCurrentTime();
+                    loopedtube.addRecentVideo(loopedtube.currentVideo, function () {
+                        loopedtube.renderRecentVedioList();
+                    });
+                    
+                    $('#playin').val(loopedtube.currentVideo.id);
                 }
                 break;
 
@@ -68,7 +73,7 @@ function onPlayerReady() {
                 $endTime.attr('disabled', 'disabled');
 
                 //init playing video by the id of input
-                loopedtube.currentVideo = new loopedtube.Video(loopedtube.cuedVideo.id);
+                loopedtube.currentVideo = loopedtube.cuedVideo;
                 loopedtube.cued = true;
 
                 loopedtube.player.playVideo();

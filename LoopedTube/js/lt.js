@@ -80,16 +80,8 @@
                     loopedtube.cuedVideo = loopedtube.parseVideoId($playin.val());
 
                     if (loopedtube.cuedVideo.id) {
-                        if (!loopedtube.loadedAPI) {
-                            loopedtube.loadedAPI = true;
+                        loopedtube.cueVideo();
 
-                            //load YouTube API
-                            $.getScript('https://www.youtube.com/iframe_api');
-                        } else {
-                            loopedtube.cueVideo();
-                        }
-
-                        $playin.val(loopedtube.cuedVideo.id);
                         $('#playcontent').hide();
                         $('#add').removeClass('active');
                     } else {
@@ -174,6 +166,7 @@
                         }
 
                         $target.val($.secondToTime(sec));
+                        loopedtube.addRecentVideo(loopedtube.currentVideo);
                     }
                 } else {
                     loopedtube.showMessage('請輸入正確的時間格式。', 'error');
@@ -186,11 +179,27 @@
                     $(this).parent().hide();
                 });
 
+        //render recent playing video lsit
+        loopedtube.renderRecentVedioList();
+
+        $('#recent-video .recent-video-header-trash').on('click', function () {
+            localStorage.clear();
+            loopedtube.renderRecentVedioList();
+        });
+
         return this;
     };
 
     //cue YouTube video to ready to play
     loopedtube.cueVideo = function () {
+        if (!loopedtube.loadedAPI) {
+            loopedtube.loadedAPI = true;
+
+            //load YouTube API
+            $.getScript('https://www.youtube.com/iframe_api');
+            return;
+        }
+
         var cuedVideo = this.cuedVideo,
             videoId = cuedVideo.id;
 
@@ -199,6 +208,132 @@
         }
         
         return this;
+    };
+
+    //retrieve video datas
+    loopedtube.retrieveVideoData = function (videoId, callback, error) {
+        $.ajax({
+            url: 'https://www.googleapis.com/youtube/v3/videos?key=AIzaSyBcc3KRsP4a0NpQMymFkQNXkMXoROsTov4&&part=snippet&fields=items(snippet(title,thumbnails))&id=' + videoId,
+            async: true,
+            dataType: 'json',
+            method: 'GET',
+            error: function (xhr, status, e) {
+                if ($.isFunction(error)) {
+                    error({
+                        code: status,
+                        message: e
+                    });
+                }
+            },
+            success: function (data) {
+                if (data) {
+                    if (data.error && $.isFunction(error)) {
+                        //發生錯誤
+                        error(data.error);
+                    } else if ($.isArray(data.items) && $.isFunction(callback)) {
+                        //成功取回資料
+                        callback(data.items);
+                    }
+                } else {
+                    //沒有取回任何資料
+                    if ($.isFunction(error)) {
+                        error({
+                            code: "error",
+                            message: "nothing"
+                        });
+                    }
+                }
+            }
+        });
+    };
+
+    //add current video to the list of recent playing video
+    loopedtube.addRecentVideo = function (video, callback) {
+        var recentVideos = loopedtube.getRecentVideoList(),
+            index = -1;
+
+        try {
+            recentVideos.forEach(function (item, i) {
+                if (item.id === video.id) {
+                    index = i;
+                }
+            });
+
+            if (index === -1) {
+                loopedtube.retrieveVideoData(video.id, function (items) {
+                    video.title = items[0].snippet.title;
+                    video.thumbnail = items[0].snippet.thumbnails.default;
+
+                    //max length is 20
+                    if (recentVideos.length > 20) {
+                        recentVideos.pop();
+                    }
+
+                    recentVideos.unshift(video);
+                    localStorage.setItem('recentVideos', JSON.stringify(recentVideos));
+
+                    if ($.isFunction(callback)) {
+                        callback();
+                    }
+                });
+            } else {
+                //if vidoe had existed, change index to first
+                recentVideos.splice(index, 1);
+                recentVideos.unshift(video);
+
+                localStorage.setItem('recentVideos', JSON.stringify(recentVideos));
+
+                if ($.isFunction(callback)) {
+                    callback();
+                }
+            }
+        } catch (e) {
+
+        }
+    };
+
+    //get recent playing video list from local storage
+    loopedtube.getRecentVideoList = function () {
+        var recentVideos = localStorage.getItem('recentVideos');
+
+        if (!recentVideos) {
+            recentVideos = [];
+        } else {
+            recentVideos = JSON.parse(recentVideos);
+        }
+
+        return recentVideos;
+    };
+
+    //render recent playing video lsit
+    loopedtube.renderRecentVedioList = function () {
+        var recentVideos = loopedtube.getRecentVideoList(),
+            $recentVideo = $('#recent-video'),
+            $recentVideoList = $('.recent-video-list', $recentVideo),
+            $videoRecord;
+
+        if (recentVideos.length > 0) {
+            $recentVideoList.empty();
+
+            recentVideos.forEach(function (video) {
+                $videoRecord = $('<div class="recent-video-list-record"></div>').appendTo($recentVideoList);
+
+                $('<img class="recent-video-list-record-img" />')
+                    .attr('src', video.thumbnail.url)
+                    .appendTo($videoRecord);
+
+                $('<div class="recent-video-list-record-title"></div>')
+                    .text(video.title)
+                    .appendTo($videoRecord);
+
+                $videoRecord.on('click', function () {
+                    loopedtube.cuedVideo = video;
+                    loopedtube.cueVideo();
+                });
+            });
+        } else {
+            $recentVideoList.text('無記錄');
+        }
     };
 
     //watch playing video current time
@@ -214,6 +349,7 @@
             }
         }, 100);
     };
+    loopedtube.startWatchCurrentTime.intervalId = null;
 
     //stop watching playing video current time
     loopedtube.stopWatchCurrentTime = function () {
@@ -304,7 +440,7 @@
         }
 
         return video;
-    }
+    };
 
 
 
@@ -316,6 +452,8 @@
         }
 
         this.id = (id) ? id : null; //video id
+        this.title = null; //video title
+        this.thumbnail = null; //video thumbnail
         this.duration = 0; //seconds of video duration
         this.startTime = 0; //seconds of video start time
         this.endTime = 0; //seconds of video end time
