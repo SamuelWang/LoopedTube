@@ -256,13 +256,14 @@
             recentVideos.forEach(function (item, i) {
                 if (item.id === video.id) {
                     index = i;
+                    video = item;
                 }
             });
 
             if (index === -1) {
                 loopedtube.retrieveVideoData(video.id, function (items) {
                     video.title = items[0].snippet.title;
-                    video.thumbnail = items[0].snippet.thumbnails.default;
+                    video.thumbnail = items[0].snippet.thumbnails["default"];
 
                     //max length is 20
                     if (recentVideos.length > 20) {
@@ -316,6 +317,10 @@
             $recentVideoList.empty();
 
             recentVideos.forEach(function (video) {
+                if (!video.title || !video.thumbnail) {
+                    return;
+                }
+
                 $videoRecord = $('<div class="recent-video-list-record"></div>').appendTo($recentVideoList);
 
                 $('<img class="recent-video-list-record-img" />')

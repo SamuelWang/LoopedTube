@@ -261,3 +261,7 @@ body {
     margin-top: 5px;
     vertical-align: top;
 }
+
+#private-policy .box {
+    text-align: left;
+}
