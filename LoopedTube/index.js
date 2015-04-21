@@ -48,6 +48,8 @@ function onPlayerReady() {
                         loopedtube.currentVideo.duration = duration;
                         $('#endtime', '#time-interval').val($.secondToTime(duration));
                         $endTime.removeAttr('disabled');
+                    } else if (endTime !== 0) {
+                        $endTime.removeAttr('disabled');
                     }
 
                     loopedtube.cued = false;
@@ -65,10 +67,11 @@ function onPlayerReady() {
                 break;
 
             case YT.PlayerState.CUED: //5
-                var startTime = (loopedtube.cuedVideo.startTime) ? loopedtube.cuedVideo.startTime : 0;
+                var startTime = (loopedtube.cuedVideo.startTime) ? loopedtube.cuedVideo.startTime : 0,
+                    endTime = (loopedtube.cuedVideo.endTime) ? loopedtube.cuedVideo.endTime : 0;
 
                 $startTime.val($.secondToTime(startTime));
-                $endTime.val($.secondToTime(0));
+                $endTime.val($.secondToTime(endTime));
                 $startTime.attr('disabled', 'disabled');
                 $endTime.attr('disabled', 'disabled');
 

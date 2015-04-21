@@ -75,12 +75,25 @@
             .end()
             .find('.fa-play')
                 .on('click', function () {
-                    var $playin = $(this).siblings('#playin');
+                    var $playin = $(this).siblings('#playin'),
+                        cuedVideo = loopedtube.parseVideoId($playin.val());
 
-                    loopedtube.cuedVideo = loopedtube.parseVideoId($playin.val());
+                    if (cuedVideo.id) {
+                        loopedtube.getRecentVideoList().every(function (video) {
+                            if (video.id === cuedVideo.id) {
+                                cuedVideo = video;
+                                return false;
+                            }
 
-                    if (loopedtube.cuedVideo.id) {
-                        loopedtube.cueVideo();
+                            return true;
+                        });
+
+                        if (cuedVideo.id === loopedtube.currentVideo.id) {
+                            loopedtube.player.seekTo(loopedtube.currentVideo.startTime);
+                        } else {
+                            loopedtube.cuedVideo = cuedVideo;
+                            loopedtube.cueVideo();
+                        }
 
                         $('#playcontent').hide();
                         $('#add').removeClass('active');
@@ -256,7 +269,6 @@
             recentVideos.forEach(function (item, i) {
                 if (item.id === video.id) {
                     index = i;
-                    video = item;
                 }
             });
 
@@ -265,12 +277,26 @@
                     video.title = items[0].snippet.title;
                     video.thumbnail = items[0].snippet.thumbnails["default"];
 
-                    //max length is 20
-                    if (recentVideos.length > 20) {
+                    //max length is 50
+                    if (recentVideos.length > 50) {
                         recentVideos.pop();
                     }
 
                     recentVideos.unshift(video);
+                    localStorage.setItem('recentVideos', JSON.stringify(recentVideos));
+
+                    if ($.isFunction(callback)) {
+                        callback();
+                    }
+                });
+            } else if (!video.title || !video.thumbnail) {
+                loopedtube.retrieveVideoData(video.id, function (items) {
+                    video.title = items[0].snippet.title;
+                    video.thumbnail = items[0].snippet.thumbnails["default"];
+
+                    recentVideos.splice(index, 1);
+                    recentVideos.unshift(video);
+
                     localStorage.setItem('recentVideos', JSON.stringify(recentVideos));
 
                     if ($.isFunction(callback)) {
@@ -331,10 +357,26 @@
                     .text(video.title)
                     .appendTo($videoRecord);
 
-                $videoRecord.on('click', function () {
-                    loopedtube.cuedVideo = video;
-                    loopedtube.cueVideo();
-                });
+                $videoRecord
+                    .data('videoId', video.id)
+                    .on('click', function () {
+                        var cuedVideo,
+                            $elem = $(this);
+
+                        loopedtube.getRecentVideoList().forEach(function (video) {
+                            if (video.id === $elem.data('videoId')) {
+                                cuedVideo = video;
+                            }
+                        });
+
+                        if (cuedVideo) {
+                            loopedtube.cuedVideo = cuedVideo;
+                            loopedtube.cueVideo();
+
+                            $('#playcontent').hide();
+                            $('#add').removeClass('active');
+                        }
+                    });
             });
         } else {
             $recentVideoList.text('無記錄');
@@ -348,17 +390,21 @@
             $endTime = $('#endtime', $timeInterval);
 
         this.startWatchCurrentTime.intervalId = setInterval(function () {
-            if (loopedtube.player.getCurrentTime() >= $.timeToSecond($endTime.val())) {
+            var endSecond = $.timeToSecond($endTime.val());
+
+            if (loopedtube.player.getCurrentTime() >= endSecond && endSecond < loopedtube.currentVideo.duration) {
                 //replay since the start time when the current time is greater than end time
                 loopedtube.player.seekTo($.timeToSecond($startTime.val()));
             }
-        }, 100);
+        }, 500);
     };
     loopedtube.startWatchCurrentTime.intervalId = null;
 
     //stop watching playing video current time
     loopedtube.stopWatchCurrentTime = function () {
         clearInterval(this.startWatchCurrentTime.intervalId);
+
+        this.startWatchCurrentTime.intervalId = null;
     };
 
     //show system message

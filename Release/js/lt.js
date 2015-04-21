@@ -1,54 +1,526 @@
-﻿(function (g) {
-    g.loopedtube = { player: null, cuedVideo: null, currentVideo: null, loadedAPI: !1, isLoop: !0, musicMode: !1, cued: !1 }; var a = g.loopedtube; a.toggleButtonActive = function (a, b, c) { a.hasClass("active") ? (a.removeClass("active"), $.isFunction(c) && c.call(a)) : (a.addClass("active"), $.isFunction(b) && b.call(a)); return this }; a.initialize = function () {
-        var d = $("#header"), b = $("#container"); $("#add", d).on("click", function () {
-            a.toggleButtonActive($(this), function () { var a = $("#playcontent"); a.show(); a.find("#playin").focus() },
-            function () { $("#playcontent").hide() })
-        }); $("#searchcontent", b).hide(); $("#playcontent", b).find("#playin").focus().on("keydown", function (a) { 13 === a.which && $(".fa-play", "#playcontent").trigger("click") }).end().find(".fa-play").on("click", function () { var c = $(this).siblings("#playin"); a.cuedVideo = a.parseVideoId(c.val()); a.cuedVideo.id ? (a.cueVideo(), $("#playcontent").hide(), $("#add").removeClass("active")) : (window.alert("\u8acb\u8f38\u5165\u6b63\u78ba\u7684\u5f71\u7247ID\u6216\u5f71\u7247\u7db2\u5740"), c.focus()) });
-        $("#player-funcs", b).find(".fa-repeat").on("click", function () { a.toggleButtonActive($(this), function () { a.isLoop = !0 }, function () { a.isLoop = !1 }) }).end().find(".fa-arrows-h").on("click", function () { a.toggleButtonActive($(this), function () { $("#time-interval", b).show() }, function () { $("#time-interval", b).hide() }) }).end().find(".fa-music").on("click", function () {
-            a.toggleButtonActive($(this), function () { a.musicMode = !0; -1 < a.player.getPlayerState() && a.player.setPlaybackQuality("small") }, function () {
-                a.musicMode = !1; -1 <
-                a.player.getPlayerState() && a.player.setPlaybackQuality("default")
-            })
-        }); $("#time-interval", b).hide().on("change", function (c) {
-            $(this); c = $(c.target); var d = c.attr("id"), b = c.val(); if (/(\d{1,2}):?(\d{1,2}):?(\d{1,2})/.test(b)) {
-                if (b = $.timeToSecond(b), 0 < b) {
-                    switch (d) {
-                        case "starttime": if (b > a.currentVideo.duration) { a.showMessage("\u958b\u59cb\u6642\u9593\u4e0d\u53ef\u5927\u65bc\u5f71\u97f3\u7e3d\u9577\u5ea6\u3002", "warning"); c.val($.secondToTime(0)); return } a.currentVideo.startTime = b; 5 < b - a.player.getCurrentTime() &&
-                        a.player.seekTo(b); break; case "endtime": if (b > a.currentVideo.duration) { a.showMessage("\u7d50\u675f\u6642\u9593\u4e0d\u53ef\u5927\u65bc\u5f71\u97f3\u7e3d\u9577\u5ea6\u3002", "warning"); c.val($.secondToTime(a.currentVideo.duration)); return } a.currentVideo.endTime = b
-                    } c.val($.secondToTime(b)); a.addRecentVideo(a.currentVideo)
+﻿/*!
+ *  LoopedTube - lt.js
+ *  https://github.com/SamuelWang/LoopedTube
+ *  
+ *  Copyright 2015 Samuel W.
+ *  https://plus.google.com/u/0/101455311553487495221/about
+ * 
+ *  Date: 2015-03-31 22:20 GMT+0800
+ */
+
+/// <reference path="jquery.utility.js" />
+
+(function (global) {
+    //global namespace
+    global.loopedtube = {
+        player: null, //YouTube Player
+        cuedVideo: null, //temporary video info after user input video id
+        currentVideo: null, //current playing video
+        loadedAPI: false, //specify if the YouTube API have loaded
+        isLoop: true, //specify if current video should to loop
+        musicMode: false, //specify if user turn on music mode
+        cued: false //specify if playing video at first
+    };
+
+    var loopedtube = global.loopedtube;
+
+    //Add "active" class if has no "active" class, or remove
+    loopedtube.toggleButtonActive = function ($elem, onAct, offAct) {
+        if (!$elem.hasClass('active')) {
+            $elem.addClass('active');
+            
+            if ($.isFunction(onAct)) {
+                onAct.call($elem);
+            }
+        } else {
+            $elem.removeClass('active');
+
+            if ($.isFunction(offAct)) {
+                offAct.call($elem);
+            }
+        }
+
+        return this;
+    };
+
+    //init status of every functionality
+    loopedtube.initialize = function () {
+        var $header = $('#header'),
+            $container = $('#container');
+
+        //fire header add video func button event
+        $('#add', $header)
+            .on('click', function () {
+                loopedtube.toggleButtonActive($(this), function () {
+                    var $playcontent = $('#playcontent');
+
+                    $playcontent.show();
+                    $playcontent.find('#playin').focus();
+                }, function () {
+                    $('#playcontent').hide();
+                });
+            });
+
+        //hide search content at the beginning
+        $('#searchcontent', $container).hide();
+
+        $('#playcontent', $container)
+            .find('#playin')
+                .focus()
+                .on('keydown', function (evt) {
+                    if (evt.which === 13) {
+                        $('.fa-play', '#playcontent').trigger('click');
+                    }
+                })
+            .end()
+            .find('.fa-play')
+                .on('click', function () {
+                    var $playin = $(this).siblings('#playin'),
+                        cuedVideo = loopedtube.parseVideoId($playin.val());
+
+                    if (cuedVideo.id) {
+                        loopedtube.getRecentVideoList().every(function (video) {
+                            if (video.id === cuedVideo.id) {
+                                cuedVideo = video;
+                                return false;
+                            }
+
+                            return true;
+                        });
+
+                        if (cuedVideo.id === loopedtube.currentVideo.id) {
+                            loopedtube.player.seekTo(loopedtube.currentVideo.startTime);
+                        } else {
+                            loopedtube.cuedVideo = cuedVideo;
+                            loopedtube.cueVideo();
+                        }
+
+                        $('#playcontent').hide();
+                        $('#add').removeClass('active');
+                    } else {
+                        window.alert('請輸入正確的影片ID或影片網址');
+                        $playin.focus();
+                    }
+                });
+
+        $('#player-funcs', $container)
+            .find('.fa-repeat')
+                .on('click', function () {
+                    loopedtube.toggleButtonActive($(this), function () {
+                        loopedtube.isLoop = true;
+                    }, function () {
+                        loopedtube.isLoop = false;
+                    });
+                })
+            .end()
+            .find('.fa-arrows-h')
+                .on('click', function () {
+                    loopedtube.toggleButtonActive($(this), function () {
+                        $('#time-interval', $container).show();
+                    }, function () {
+                        $('#time-interval', $container).hide();
+                    });
+                })
+            .end()
+            .find('.fa-music')
+                .on('click', function () {
+                    loopedtube.toggleButtonActive($(this), function () {
+                        loopedtube.musicMode = true;
+
+                        if (loopedtube.player.getPlayerState() > -1) {
+                            loopedtube.player.setPlaybackQuality('small');
+                        }
+                    }, function () {
+                        loopedtube.musicMode = false;
+
+                        if (loopedtube.player.getPlayerState() > -1) {
+                            loopedtube.player.setPlaybackQuality('default');
+                        }
+                    });
+                });
+
+        $('#time-interval', $container)
+            .hide()
+            .on('change', function (evt) {
+                var $elem = $(this),
+                    $target = $(evt.target),
+                    id = $target.attr('id'),
+                    val = $target.val();
+
+                if (/(\d{1,2}):?(\d{1,2}):?(\d{1,2})/.test(val)) {
+                    var sec = $.timeToSecond(val);
+
+                    if (sec > 0) {
+                        switch (id) {
+                            case 'starttime':
+                                if (sec > loopedtube.currentVideo.duration) {
+                                    loopedtube.showMessage('開始時間不可大於影音總長度。', 'warning');
+                                    $target.val($.secondToTime(0));
+                                    return;
+                                } else {
+                                    loopedtube.currentVideo.startTime = sec;
+
+                                    //seek to start time if current time less than the start time that user set
+                                    if ((sec - loopedtube.player.getCurrentTime()) > 5) {
+                                        loopedtube.player.seekTo(sec);
+                                    }
+                                }
+                                break;
+
+                            case 'endtime':
+                                if (sec > loopedtube.currentVideo.duration) {
+                                    loopedtube.showMessage('結束時間不可大於影音總長度。', 'warning');
+                                    $target.val($.secondToTime(loopedtube.currentVideo.duration));
+                                    return;
+                                } else {
+                                    loopedtube.currentVideo.endTime = sec;
+                                }
+                                break;
+                        }
+
+                        $target.val($.secondToTime(sec));
+                        loopedtube.addRecentVideo(loopedtube.currentVideo);
+                    }
+                } else {
+                    loopedtube.showMessage('請輸入正確的時間格式。', 'error');
                 }
-            } else a.showMessage("\u8acb\u8f38\u5165\u6b63\u78ba\u7684\u6642\u9593\u683c\u5f0f\u3002", "error")
-        }); $("#message-box", b).hide().find(".message").on("click", function () { $(this).parent().hide() });
-        a.renderRecentVedioList(); $("#recent-video .recent-video-header-trash").on("click", function () { localStorage.clear(); a.renderRecentVedioList() }); return this
-    }; a.cueVideo = function () { if (a.loadedAPI) { var d = this.cuedVideo, b = d.id; b && a.player.cueVideoById(b, d.startTime, a.musicMode ? "small" : "default"); return this } a.loadedAPI = !0; $.getScript("https://www.youtube.com/iframe_api") }; a.retrieveVideoData = function (a, b, c) {
+            });
+
+        $('#message-box', $container).hide()
+            .find('.message')
+                .on('click', function () {
+                    $(this).parent().hide();
+                });
+
+        //render recent playing video lsit
+        loopedtube.renderRecentVedioList();
+
+        $('#recent-video .recent-video-header-trash').on('click', function () {
+            localStorage.clear();
+            loopedtube.renderRecentVedioList();
+        });
+
+        return this;
+    };
+
+    //cue YouTube video to ready to play
+    loopedtube.cueVideo = function () {
+        if (!loopedtube.loadedAPI) {
+            loopedtube.loadedAPI = true;
+
+            //load YouTube API
+            $.getScript('https://www.youtube.com/iframe_api');
+            return;
+        }
+
+        var cuedVideo = this.cuedVideo,
+            videoId = cuedVideo.id;
+
+        if (videoId) {
+            loopedtube.player.cueVideoById(videoId, cuedVideo.startTime, (loopedtube.musicMode) ? 'small' : 'default');
+        }
+        
+        return this;
+    };
+
+    //retrieve video datas
+    loopedtube.retrieveVideoData = function (videoId, callback, error) {
         $.ajax({
-            url: "https://www.googleapis.com/youtube/v3/videos?key=AIzaSyBcc3KRsP4a0NpQMymFkQNXkMXoROsTov4&&part=snippet&fields=items(snippet(title,thumbnails))&id=" +
-            a, async: !0, dataType: "json", method: "GET", error: function (a, d, b) { $.isFunction(c) && c({ code: d, message: b }) }, success: function (a) { a ? a.error && $.isFunction(c) ? c(a.error) : $.isArray(a.items) && $.isFunction(b) && b(a.items) : $.isFunction(c) && c({ code: "error", message: "nothing" }) }
-        })
-    }; a.addRecentVideo = function (d, b) {
-        var c = a.getRecentVideoList(), e = -1; try {
-            c.forEach(function (a, c) { a.id === d.id && (e = c, d = a) }), -1 === e ? a.retrieveVideoData(d.id, function (a) {
-                d.title = a[0].snippet.title; d.thumbnail = a[0].snippet.thumbnails["default"];
-                20 < c.length && c.pop(); c.unshift(d); localStorage.setItem("recentVideos", JSON.stringify(c)); $.isFunction(b) && b()
-            }) : (c.splice(e, 1), c.unshift(d), localStorage.setItem("recentVideos", JSON.stringify(c)), $.isFunction(b) && b())
-        } catch (f) { }
-    }; a.getRecentVideoList = function () { var a = localStorage.getItem("recentVideos"); return a = a ? JSON.parse(a) : [] }; a.renderRecentVedioList = function () {
-        var d = a.getRecentVideoList(), b = $("#recent-video"), c = $(".recent-video-list", b), e; 0 < d.length ? (c.empty(), d.forEach(function (b) {
-            b.title &&
-            b.thumbnail && (e = $('<div class="recent-video-list-record"></div>').appendTo(c), $('<img class="recent-video-list-record-img" />').attr("src", b.thumbnail.url).appendTo(e), $('<div class="recent-video-list-record-title"></div>').text(b.title).appendTo(e), e.on("click", function () { a.cuedVideo = b; a.cueVideo() }))
-        })) : c.text("\u7121\u8a18\u9304")
-    }; a.startWatchCurrentTime = function () {
-        var d = $("#time-interval"), b = $("#starttime", d), c = $("#endtime", d); this.startWatchCurrentTime.intervalId = setInterval(function () {
-            a.player.getCurrentTime() >=
-            $.timeToSecond(c.val()) && a.player.seekTo($.timeToSecond(b.val()))
-        }, 100)
-    }; a.startWatchCurrentTime.intervalId = null; a.stopWatchCurrentTime = function () { clearInterval(this.startWatchCurrentTime.intervalId) }; a.showMessage = function (a, b) {
-        var c = $("#message-box"), e = $(".message", c), f = 6; if (a) {
-            clearTimeout(this.showMessage.timeout); e.html(a).removeClass("warning error"); switch (b) { case "warning": e.addClass("warning"); f = 12; break; case "error": e.addClass("error"), f = 18 } c.show(); this.showMessage.timeout = setTimeout(function () { c.hide() },
-            1E3 * f)
-        } return this
-    }; a.showMessage.timeout = null; a.parseVideoId = function (d) {
-        if (!d) return null; var b = new a.Video, c = /http[s]?\:\/\/www\.youtube\.com\/watch\?v\=([\w\-]{11})\&?.*/ig.exec(d), e = /http[s]?\:\/\/youtu\.be\/([\w\-]{11})(\?t\=([\w\d]+))?/ig.exec(d), f = /^<iframe\s{1}.*?https\:\/\/www\.youtube\.com\/embed\/([\w\-]{11})\??.*/ig.exec(d); f && f[1] ? b.id = f[1] : c && c[1] ? b.id = c[1] : e && e[1] ? (b.id = e[1], e[3] && (d = /((\d{1,2})h)?((\d{1,2})m)?((\d{1,2})s)?/ig.exec(e[3]), c = 0, d[2] && (c += 3600 * parseInt(d[2], 10)), d[4] &&
-        (c += 60 * parseInt(d[4], 10)), d[6] && (c += parseInt(d[6], 10)), 0 <= c && (b.startTime = c))) : 11 === d.length && (b.id = d); return b
-    }; a.Video = function (d) { if (!(this instanceof a.Video)) return new a.Video(d); this.id = d ? d : null; this.thumbnail = this.title = null; this.endTime = this.startTime = this.duration = 0 }; a.Video.prototype = { videoId: function (a) { return a ? (this.id = this.parseVideoId(a), this) : this.id } }
-})(window);
+            url: 'https://www.googleapis.com/youtube/v3/videos?key=AIzaSyBcc3KRsP4a0NpQMymFkQNXkMXoROsTov4&&part=snippet&fields=items(snippet(title,thumbnails))&id=' + videoId,
+            async: true,
+            dataType: 'json',
+            method: 'GET',
+            error: function (xhr, status, e) {
+                if ($.isFunction(error)) {
+                    error({
+                        code: status,
+                        message: e
+                    });
+                }
+            },
+            success: function (data) {
+                if (data) {
+                    if (data.error && $.isFunction(error)) {
+                        //發生錯誤
+                        error(data.error);
+                    } else if ($.isArray(data.items) && $.isFunction(callback)) {
+                        //成功取回資料
+                        callback(data.items);
+                    }
+                } else {
+                    //沒有取回任何資料
+                    if ($.isFunction(error)) {
+                        error({
+                            code: "error",
+                            message: "nothing"
+                        });
+                    }
+                }
+            }
+        });
+    };
+
+    //add current video to the list of recent playing video
+    loopedtube.addRecentVideo = function (video, callback) {
+        var recentVideos = loopedtube.getRecentVideoList(),
+            index = -1;
+
+        try {
+            recentVideos.forEach(function (item, i) {
+                if (item.id === video.id) {
+                    index = i;
+                }
+            });
+
+            if (index === -1) {
+                loopedtube.retrieveVideoData(video.id, function (items) {
+                    video.title = items[0].snippet.title;
+                    video.thumbnail = items[0].snippet.thumbnails["default"];
+
+                    //max length is 50
+                    if (recentVideos.length > 50) {
+                        recentVideos.pop();
+                    }
+
+                    recentVideos.unshift(video);
+                    localStorage.setItem('recentVideos', JSON.stringify(recentVideos));
+
+                    if ($.isFunction(callback)) {
+                        callback();
+                    }
+                });
+            } else if (!video.title || !video.thumbnail) {
+                loopedtube.retrieveVideoData(video.id, function (items) {
+                    video.title = items[0].snippet.title;
+                    video.thumbnail = items[0].snippet.thumbnails["default"];
+
+                    recentVideos.splice(index, 1);
+                    recentVideos.unshift(video);
+
+                    localStorage.setItem('recentVideos', JSON.stringify(recentVideos));
+
+                    if ($.isFunction(callback)) {
+                        callback();
+                    }
+                });
+            } else {
+                //if vidoe had existed, change index to first
+                recentVideos.splice(index, 1);
+                recentVideos.unshift(video);
+
+                localStorage.setItem('recentVideos', JSON.stringify(recentVideos));
+
+                if ($.isFunction(callback)) {
+                    callback();
+                }
+            }
+        } catch (e) {
+
+        }
+    };
+
+    //get recent playing video list from local storage
+    loopedtube.getRecentVideoList = function () {
+        var recentVideos = localStorage.getItem('recentVideos');
+
+        if (!recentVideos) {
+            recentVideos = [];
+        } else {
+            recentVideos = JSON.parse(recentVideos);
+        }
+
+        return recentVideos;
+    };
+
+    //render recent playing video lsit
+    loopedtube.renderRecentVedioList = function () {
+        var recentVideos = loopedtube.getRecentVideoList(),
+            $recentVideo = $('#recent-video'),
+            $recentVideoList = $('.recent-video-list', $recentVideo),
+            $videoRecord;
+
+        if (recentVideos.length > 0) {
+            $recentVideoList.empty();
+
+            recentVideos.forEach(function (video) {
+                if (!video.title || !video.thumbnail) {
+                    return;
+                }
+
+                $videoRecord = $('<div class="recent-video-list-record"></div>').appendTo($recentVideoList);
+
+                $('<img class="recent-video-list-record-img" />')
+                    .attr('src', video.thumbnail.url)
+                    .appendTo($videoRecord);
+
+                $('<div class="recent-video-list-record-title"></div>')
+                    .text(video.title)
+                    .appendTo($videoRecord);
+
+                $videoRecord
+                    .data('videoId', video.id)
+                    .on('click', function () {
+                        var cuedVideo,
+                            $elem = $(this);
+
+                        loopedtube.getRecentVideoList().forEach(function (video) {
+                            if (video.id === $elem.data('videoId')) {
+                                cuedVideo = video;
+                            }
+                        });
+
+                        if (cuedVideo) {
+                            loopedtube.cuedVideo = cuedVideo;
+                            loopedtube.cueVideo();
+
+                            $('#playcontent').hide();
+                            $('#add').removeClass('active');
+                        }
+                    });
+            });
+        } else {
+            $recentVideoList.text('無記錄');
+        }
+    };
+
+    //watch playing video current time
+    loopedtube.startWatchCurrentTime = function () {
+        var $timeInterval = $('#time-interval'),
+            $startTime = $('#starttime', $timeInterval),
+            $endTime = $('#endtime', $timeInterval);
+
+        this.startWatchCurrentTime.intervalId = setInterval(function () {
+            var endSecond = $.timeToSecond($endTime.val());
+
+            if (loopedtube.player.getCurrentTime() >= endSecond && endSecond < loopedtube.currentVideo.duration) {
+                //replay since the start time when the current time is greater than end time
+                loopedtube.player.seekTo($.timeToSecond($startTime.val()));
+            }
+        }, 500);
+    };
+    loopedtube.startWatchCurrentTime.intervalId = null;
+
+    //stop watching playing video current time
+    loopedtube.stopWatchCurrentTime = function () {
+        clearInterval(this.startWatchCurrentTime.intervalId);
+
+        this.startWatchCurrentTime.intervalId = null;
+    };
+
+    //show system message
+    loopedtube.showMessage = function (msg, type) {
+        var $messageBox = $('#message-box'),
+            $message = $('.message', $messageBox),
+            elapse = 6;
+
+        if (msg) {
+            clearTimeout(this.showMessage.timeout);
+
+            $message
+                .html(msg)
+                .removeClass('warning error');
+
+            switch (type) {
+                case 'warning':
+                    $message.addClass('warning');
+                    elapse = 12;
+                    break;
+
+                case 'error':
+                    $message.addClass('error');
+                    elapse = 18;
+                    break;
+            }
+
+            $messageBox.show();
+
+            this.showMessage.timeout = setTimeout(function () {
+                $messageBox.hide();
+            }, elapse * 1000)
+        }
+        
+        return this;
+    };
+    loopedtube.showMessage.timeout = null;
+
+    //parse input string to get video id and start time
+    loopedtube.parseVideoId = function (str) {
+        if (!str) {
+            return null;
+        }
+
+        var video = new loopedtube.Video(),
+            match_url = /http[s]?\:\/\/www\.youtube\.com\/watch\?v\=([\w\-]{11})\&?.*/ig.exec(str),
+            match_share = /http[s]?\:\/\/youtu\.be\/([\w\-]{11})(\?t\=([\w\d]+))?/ig.exec(str),
+            match_iframe = /^<iframe\s{1}.*?https\:\/\/www\.youtube\.com\/embed\/([\w\-]{11})\??.*/ig.exec(str);
+
+        //check input value type to retrieve video id
+        if (match_iframe && match_iframe[1]) {
+            video.id = match_iframe[1];
+        } else if (match_url && match_url[1]) {
+            video.id = match_url[1];
+        } else if (match_share && match_share[1]) {
+            video.id = match_share[1];
+
+            if (match_share[3]) {
+                var match_time = /((\d{1,2})h)?((\d{1,2})m)?((\d{1,2})s)?/ig.exec(match_share[3]),
+                    seconds = 0;
+
+                //hours
+                if (match_time[2]) {
+                    seconds += (parseInt(match_time[2], 10) * 60 * 60);
+                }
+
+                //minutes
+                if (match_time[4]) {
+                    seconds += (parseInt(match_time[4], 10) * 60);
+                }
+
+                //seconds
+                if (match_time[6]) {
+                    seconds += (parseInt(match_time[6], 10));
+                }
+
+                if (seconds >= 0) {
+                    //set video start time
+                    video.startTime = seconds;
+                }
+            }
+        } else if (str.length === 11) {
+            video.id = str;
+        }
+
+        return video;
+    };
+
+
+
+    //Video Class
+    loopedtube.Video = function (id) {
+        if (!(this instanceof loopedtube.Video)) {
+            //force this constructor to new correctly
+            return new loopedtube.Video(id);
+        }
+
+        this.id = (id) ? id : null; //video id
+        this.title = null; //video title
+        this.thumbnail = null; //video thumbnail
+        this.duration = 0; //seconds of video duration
+        this.startTime = 0; //seconds of video start time
+        this.endTime = 0; //seconds of video end time
+    };
+
+    //Video Class's prototype
+    loopedtube.Video.prototype = {
+        //set or get video id
+        videoId: function (id) {
+            if (id) {
+                this.id = this.parseVideoId(id);
+                return this;
+            }
+
+            return this.id;
+        }
+    };
+} (window));
+
