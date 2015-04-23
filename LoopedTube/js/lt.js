@@ -88,7 +88,7 @@
                             return true;
                         });
 
-                        if (cuedVideo.id === loopedtube.currentVideo.id) {
+                        if (loopedtube.currentVideo && cuedVideo.id === loopedtube.currentVideo.id) {
                             loopedtube.player.seekTo(loopedtube.currentVideo.startTime);
                         } else {
                             loopedtube.cuedVideo = cuedVideo;
