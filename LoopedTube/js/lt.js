@@ -347,7 +347,7 @@
                     return;
                 }
 
-                $videoRecord = $('<div class="recent-video-list-record"></div>').appendTo($recentVideoList);
+                $videoRecord = $('<div class="recent-video-list-record clearfix"></div>').appendTo($recentVideoList);
 
                 $('<img class="recent-video-list-record-img" />')
                     .attr('src', video.thumbnail.url)

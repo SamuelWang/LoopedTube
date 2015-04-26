@@ -244,12 +244,12 @@ body {
 }
 
 #recent-video .recent-video-list .recent-video-list-record:hover {
-    background-color: #f9f9f9;
+    color: #999;
     cursor: pointer;
 }
 
 #recent-video .recent-video-list .recent-video-list-record .recent-video-list-record-img {
-    display: inline-block;
+    float: left;
     height: 90px;
     margin-right: 10px;
     vertical-align: top;
@@ -257,9 +257,10 @@ body {
 }
 
 #recent-video .recent-video-list .recent-video-list-record .recent-video-list-record-title {
-    display: inline-block;
+    float: left;
     margin-top: 5px;
     vertical-align: top;
+    width: calc(100% - 130px);
 }
 
 #private-policy .box {

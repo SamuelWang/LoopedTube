@@ -33,7 +33,7 @@
         } catch (e) { }
     }; a.getRecentVideoList = function () { var a = localStorage.getItem("recentVideos"); return a = a ? JSON.parse(a) : [] }; a.renderRecentVedioList = function () {
         var b = a.getRecentVideoList(), d = $("#recent-video"), c = $(".recent-video-list", d), f; 0 < b.length ? (c.empty(), b.forEach(function (b) {
-            b.title && b.thumbnail && (f = $('<div class="recent-video-list-record"></div>').appendTo(c), $('<img class="recent-video-list-record-img" />').attr("src",
+            b.title && b.thumbnail && (f = $('<div class="recent-video-list-record clearfix"></div>').appendTo(c), $('<img class="recent-video-list-record-img" />').attr("src",
             b.thumbnail.url).appendTo(f), $('<div class="recent-video-list-record-title"></div>').text(b.title).appendTo(f), f.data("videoId", b.id).on("click", function () { var b, c = $(this); a.getRecentVideoList().forEach(function (a) { a.id === c.data("videoId") && (b = a) }); b && (a.cuedVideo = b, a.cueVideo(), $("#playcontent").hide(), $("#add").removeClass("active")) }))
         })) : c.text("\u7121\u8a18\u9304")
     }; a.startWatchCurrentTime = function () {
