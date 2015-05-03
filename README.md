@@ -5,4 +5,8 @@ LoopedTube can loop YouTube Video, and can set the start/end time of video.
 http://samuelwang.github.io/LoopedTube-Websit/
 
 #Release Version
-v0.0.3 Beta
+v0.0.4 Beta
+
+#Release Note
+2015.5.3
+Implement RWD feature.

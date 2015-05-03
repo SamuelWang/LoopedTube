@@ -7,8 +7,9 @@
         }
     }); loopedtube.player.addEventListener("onError", function (a) {
         switch (a.data) {
-            case 2: loopedtube.showMessage("\u932f\u8aa4\u7684\u5f71\u97f3ID\u3002", "warning"); break; case 5: loopedtube.showMessage("\u64ad\u653e\u5668\u767c\u751f\u672a\u77e5\u932f\u8aa4\u3002",
+            case 2: loopedtube.showMessage("\u672a\u77e5\u7684\u5f71\u97f3ID\u3002", "warning"); break; case 5: loopedtube.showMessage("\u64ad\u653e\u5668\u767c\u751f\u672a\u77e5\u932f\u8aa4\u3002",
             "warning"); break; case 100: loopedtube.showMessage("\u6b64\u5f71\u97f3\u53ef\u80fd\u5df2\u88ab\u522a\u9664\u6216\u662f\u70ba\u79c1\u4eba\u5f71\u97f3\u3002", "warning"); break; case 101: loopedtube.showMessage("\u5f71\u97f3\u64c1\u6709\u8005\u4e0d\u5141\u8a31\u6b64\u5f71\u97f3\u5728YouTube\u7db2\u7ad9\u4ee5\u5916\u88ab\u64ad\u653e\u3002", "warning")
         }
-    }); loopedtube.cueVideo()
-} function onYouTubeIframeAPIReady() { loopedtube.player = new YT.Player("player", { width: 854, height: 480, events: { onReady: onPlayerReady } }) } $(function () { loopedtube.initialize() });
+    }); loopedtube.loadYouTubeAPIStatus = 2; loopedtube.cuedVideo && loopedtube.cueVideo()
+}
+function onYouTubeIframeAPIReady() { var a = document.documentElement.clientWidth, c = 853, b = 480; 768 > a && (c = 320, b = 240); 768 <= a && 1024 > a && (c = 640, b = 360); 1800 <= a && (c = 1280, b = 720); loopedtube.player = new YT.Player("player", { width: c, height: b, events: { onReady: onPlayerReady } }) } $(function () { loopedtube.initialize(); $(window).on("resize", function () { var a = document.documentElement.clientWidth, c = 853, b = 480; 768 > a && (c = 320, b = 240); 768 <= a && 1024 > a && (c = 640, b = 360); 1800 <= a && (c = 1280, b = 720); loopedtube.player.setSize(c, b) }) });

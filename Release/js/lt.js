@@ -1,14 +1,16 @@
 ﻿(function (g) {
-    g.loopedtube = { player: null, cuedVideo: null, currentVideo: null, loadedAPI: !1, isLoop: !0, musicMode: !1, cued: !1 }; var a = g.loopedtube; a.toggleButtonActive = function (a, d, c) { a.hasClass("active") ? (a.removeClass("active"), $.isFunction(c) && c.call(a)) : (a.addClass("active"), $.isFunction(d) && d.call(a)); return this }; a.initialize = function () {
+    g.loopedtube = { player: null, cuedVideo: null, currentVideo: null, loadYouTubeAPIStatus: 0, isLoop: !0, musicMode: !1, cued: !1 }; var a = g.loopedtube; a.toggleButtonActive = function (a, d, c) { a.hasClass("active") ? (a.removeClass("active"), $.isFunction(c) && c.call(a)) : (a.addClass("active"), $.isFunction(d) && d.call(a)); return this }; a.initialize = function () {
         var b = $("#header"), d = $("#container"); $("#add", b).on("click", function () {
             a.toggleButtonActive($(this), function () { var a = $("#playcontent"); a.show(); a.find("#playin").focus() },
             function () { $("#playcontent").hide() })
-        }); $("#searchcontent", d).hide(); $("#playcontent", d).find("#playin").focus().on("keydown", function (a) { 13 === a.which && $(".fa-play", "#playcontent").trigger("click") }).end().find(".fa-play").on("click", function () {
-            var c = $(this).siblings("#playin"), b = a.parseVideoId(c.val()); b.id ? (a.getRecentVideoList().every(function (a) { return a.id === b.id ? (b = a, !1) : !0 }), a.currentVideo && b.id === a.currentVideo.id ? a.player.seekTo(a.currentVideo.startTime) : (a.cuedVideo = b, a.cueVideo()), $("#playcontent").hide(),
-            $("#add").removeClass("active")) : (window.alert("\u8acb\u8f38\u5165\u6b63\u78ba\u7684\u5f71\u7247ID\u6216\u5f71\u7247\u7db2\u5740"), c.focus())
+        }); $("#playcontent", d).find("#playin").focus().on("keydown", function (a) { 13 === a.which && $(".fa-play", "#playcontent").trigger("click") }).end().find(".fa-play").on("click", function () {
+            var c = $("#playin"), b = a.parseVideoId(c.val()); b && b.id ? (a.getRecentVideoList().every(function (a) { return a.id === b.id ? (b = a, !1) : !0 }), a.currentVideo && b.id === a.currentVideo.id ? a.player.seekTo(a.currentVideo.startTime) : (a.cuedVideo = b, a.cueVideo()), $("#playcontent").hide(), $("#add").removeClass("active")) :
+            (a.showMessage("\u8acb\u8f38\u5165\u6b63\u78ba\u7684\u5f71\u7247ID\u6216\u5f71\u7247\u7db2\u5740", "alert"), c.focus())
         }); $("#player-funcs", d).find(".fa-repeat").on("click", function () { a.toggleButtonActive($(this), function () { a.isLoop = !0 }, function () { a.isLoop = !1 }) }).end().find(".fa-arrows-h").on("click", function () { a.toggleButtonActive($(this), function () { $("#time-interval", d).show() }, function () { $("#time-interval", d).hide() }) }).end().find(".fa-music").on("click", function () {
-            a.toggleButtonActive($(this),
-            function () { a.musicMode = !0; -1 < a.player.getPlayerState() && a.player.setPlaybackQuality("small") }, function () { a.musicMode = !1; -1 < a.player.getPlayerState() && a.player.setPlaybackQuality("default") })
+            a.toggleButtonActive($(this), function () {
+                a.musicMode =
+                !0; -1 < a.player.getPlayerState() && a.player.setPlaybackQuality("small")
+            }, function () { a.musicMode = !1; -1 < a.player.getPlayerState() && a.player.setPlaybackQuality("default") })
         }); $("#time-interval", d).hide().on("change", function (b) {
             $(this); b = $(b.target); var d = b.attr("id"), e = b.val(); if (/(\d{1,2}):?(\d{1,2}):?(\d{1,2})/.test(e)) {
                 if (e = $.timeToSecond(e), 0 < e) {
@@ -21,14 +23,14 @@
                 }
             } else a.showMessage("\u8acb\u8f38\u5165\u6b63\u78ba\u7684\u6642\u9593\u683c\u5f0f\u3002",
             "error")
-        }); $("#message-box", d).hide().find(".message").on("click", function () { $(this).parent().hide() }); a.renderRecentVedioList(); $("#recent-video .recent-video-header-trash").on("click", function () { localStorage.clear(); a.renderRecentVedioList() }); return this
-    }; a.cueVideo = function () { if (a.loadedAPI) { var b = this.cuedVideo, d = b.id; d && a.player.cueVideoById(d, b.startTime, a.musicMode ? "small" : "default"); return this } a.loadedAPI = !0; $.getScript("https://www.youtube.com/iframe_api") }; a.retrieveVideoData = function (a,
-    d, c) { $.ajax({ url: "https://www.googleapis.com/youtube/v3/videos?key=AIzaSyBcc3KRsP4a0NpQMymFkQNXkMXoROsTov4&&part=snippet&fields=items(snippet(title,thumbnails))&id=" + a, async: !0, dataType: "json", method: "GET", error: function (a, b, d) { $.isFunction(c) && c({ code: b, message: d }) }, success: function (a) { a ? a.error && $.isFunction(c) ? c(a.error) : $.isArray(a.items) && $.isFunction(d) && d(a.items) : $.isFunction(c) && c({ code: "error", message: "nothing" }) } }) }; a.addRecentVideo = function (b, d) {
-        var c = a.getRecentVideoList(), f = -1; try {
-            c.forEach(function (a,
-            c) { a.id === b.id && (f = c) }), -1 === f ? a.retrieveVideoData(b.id, function (a) { b.title = a[0].snippet.title; b.thumbnail = a[0].snippet.thumbnails["default"]; 50 < c.length && c.pop(); c.unshift(b); localStorage.setItem("recentVideos", JSON.stringify(c)); $.isFunction(d) && d() }) : b.title && b.thumbnail ? (c.splice(f, 1), c.unshift(b), localStorage.setItem("recentVideos", JSON.stringify(c)), $.isFunction(d) && d()) : a.retrieveVideoData(b.id, function (a) {
-                b.title = a[0].snippet.title; b.thumbnail = a[0].snippet.thumbnails["default"]; c.splice(f,
-                1); c.unshift(b); localStorage.setItem("recentVideos", JSON.stringify(c)); $.isFunction(d) && d()
+        }); $("#message-box", d).hide().find(".message").on("click", function () { $(this).parent().hide() }); a.renderRecentVedioList(); $("#recent-video .recent-video-header-trash").on("click", function () { localStorage.clear(); a.renderRecentVedioList() }); $.getScript("https://www.youtube.com/iframe_api"); a.loadYouTubeAPIStatus = 1; return this
+    }; a.cueVideo = function () { if (2 === a.loadYouTubeAPIStatus) { var b = this.cuedVideo, d = b.id; d && a.player.cueVideoById(d, b.startTime, a.musicMode ? "small" : "default"); return this } }; a.retrieveVideoData =
+    function (a, d, c) { $.ajax({ url: "https://www.googleapis.com/youtube/v3/videos?key=AIzaSyBcc3KRsP4a0NpQMymFkQNXkMXoROsTov4&&part=snippet&fields=items(snippet(title,thumbnails))&id=" + a, async: !0, dataType: "json", method: "GET", error: function (a, b, d) { $.isFunction(c) && c({ code: b, message: d }) }, success: function (a) { a ? a.error && $.isFunction(c) ? c(a.error) : $.isArray(a.items) && $.isFunction(d) && d(a.items) : $.isFunction(c) && c({ code: "error", message: "nothing" }) } }) }; a.addRecentVideo = function (b, d) {
+        var c = a.getRecentVideoList(),
+        f = -1; try {
+            c.forEach(function (a, c) { a.id === b.id && (f = c) }), -1 === f ? a.retrieveVideoData(b.id, function (a) { b.title = a[0].snippet.title; b.thumbnail = a[0].snippet.thumbnails["default"]; 50 < c.length && c.pop(); c.unshift(b); localStorage.setItem("recentVideos", JSON.stringify(c)); $.isFunction(d) && d() }) : b.title && b.thumbnail ? (c.splice(f, 1), c.unshift(b), localStorage.setItem("recentVideos", JSON.stringify(c)), $.isFunction(d) && d()) : a.retrieveVideoData(b.id, function (a) {
+                b.title = a[0].snippet.title; b.thumbnail = a[0].snippet.thumbnails["default"];
+                c.splice(f, 1); c.unshift(b); localStorage.setItem("recentVideos", JSON.stringify(c)); $.isFunction(d) && d()
             })
         } catch (e) { }
     }; a.getRecentVideoList = function () { var a = localStorage.getItem("recentVideos"); return a = a ? JSON.parse(a) : [] }; a.renderRecentVedioList = function () {

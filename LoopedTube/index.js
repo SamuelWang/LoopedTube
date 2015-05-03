@@ -88,7 +88,7 @@ function onPlayerReady() {
     loopedtube.player.addEventListener('onError', function (evt) {
         switch (evt.data) {
             case 2: //contains an invalid parameter value, eg: wrong video id
-                loopedtube.showMessage('錯誤的影音ID。', 'warning');
+                loopedtube.showMessage('未知的影音ID。', 'warning');
                 break;
 
             case 5: //The requested content cannot be played in an HTML5 player or another error related to the HTML5 player has occurred
@@ -109,16 +109,39 @@ function onPlayerReady() {
         }
     });
 
-    //cue video to ready to playing
-    loopedtube.cueVideo();
+    loopedtube.loadYouTubeAPIStatus = 2;
+
+    //if have cued video before complete load YouTube API, cue the cued video
+    if (loopedtube.cuedVideo) {
+        loopedtube.cueVideo();
+    }
 }
 
 //YouTube API Ready
 function onYouTubeIframeAPIReady() {
+    var screenWidth = document.documentElement.clientWidth,
+        playerWidth = 853,
+        playerHeight = 480;
+
+    if (screenWidth < 768) {
+        playerWidth = 320;
+        playerHeight = 240;
+    }
+
+    if (screenWidth >= 768 && screenWidth < 1024) {
+        playerWidth = 640;
+        playerHeight = 360;
+    }
+
+    if (screenWidth >= 1800) {
+        playerWidth = 1280;
+        playerHeight = 720;
+    }
+
     //Initialize YouTube player
     loopedtube.player = new YT.Player('player', {
-        width: 854,
-        height: 480,
+        width: playerWidth,
+        height: playerHeight,
         events: {
             onReady: onPlayerReady
         }
@@ -129,4 +152,28 @@ function onYouTubeIframeAPIReady() {
 $(function () {
     //init functionality
     loopedtube.initialize();
+
+    $(window).on('resize', function () {
+        var screenWidth = document.documentElement.clientWidth,
+            playerWidth = 853,
+            playerHeight = 480;
+
+        if (screenWidth < 768) {
+            playerWidth = 320;
+            playerHeight = 240;
+        }
+
+        if (screenWidth >= 768 && screenWidth < 1024) {
+            playerWidth = 640;
+            playerHeight = 360;
+        }
+
+        if (screenWidth >= 1800) {
+            playerWidth = 1280;
+            playerHeight = 720;
+        }
+
+        //reset video's dimension
+        loopedtube.player.setSize(playerWidth, playerHeight);
+    });
 });

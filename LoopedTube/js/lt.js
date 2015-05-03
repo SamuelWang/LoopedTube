@@ -16,7 +16,7 @@
         player: null, //YouTube Player
         cuedVideo: null, //temporary video info after user input video id
         currentVideo: null, //current playing video
-        loadedAPI: false, //specify if the YouTube API have loaded
+        loadYouTubeAPIStatus: 0, //specify if the YouTube API have loaded, 0: none, 1: loading, 2: loaded
         isLoop: true, //specify if current video should to loop
         musicMode: false, //specify if user turn on music mode
         cued: false //specify if playing video at first
@@ -61,9 +61,6 @@
                 });
             });
 
-        //hide search content at the beginning
-        $('#searchcontent', $container).hide();
-
         $('#playcontent', $container)
             .find('#playin')
                 .focus()
@@ -75,10 +72,10 @@
             .end()
             .find('.fa-play')
                 .on('click', function () {
-                    var $playin = $(this).siblings('#playin'),
+                    var $playin = $('#playin'),
                         cuedVideo = loopedtube.parseVideoId($playin.val());
 
-                    if (cuedVideo.id) {
+                    if (cuedVideo && cuedVideo.id) {
                         loopedtube.getRecentVideoList().every(function (video) {
                             if (video.id === cuedVideo.id) {
                                 cuedVideo = video;
@@ -89,6 +86,7 @@
                         });
 
                         if (loopedtube.currentVideo && cuedVideo.id === loopedtube.currentVideo.id) {
+                            //if the video id of input is the same as current playing video, just restart the current video
                             loopedtube.player.seekTo(loopedtube.currentVideo.startTime);
                         } else {
                             loopedtube.cuedVideo = cuedVideo;
@@ -98,7 +96,7 @@
                         $('#playcontent').hide();
                         $('#add').removeClass('active');
                     } else {
-                        window.alert('請輸入正確的影片ID或影片網址');
+                        loopedtube.showMessage('請輸入正確的影片ID或影片網址', 'alert');
                         $playin.focus();
                     }
                 });
@@ -200,16 +198,17 @@
             loopedtube.renderRecentVedioList();
         });
 
+        //load YouTube API
+        $.getScript('https://www.youtube.com/iframe_api');
+
+        loopedtube.loadYouTubeAPIStatus = 1;
+
         return this;
     };
 
     //cue YouTube video to ready to play
     loopedtube.cueVideo = function () {
-        if (!loopedtube.loadedAPI) {
-            loopedtube.loadedAPI = true;
-
-            //load YouTube API
-            $.getScript('https://www.youtube.com/iframe_api');
+        if (loopedtube.loadYouTubeAPIStatus !== 2) {
             return;
         }
 

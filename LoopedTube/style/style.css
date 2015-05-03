@@ -47,7 +47,7 @@ body {
     background: linear-gradient(to bottom, #fafafa,#f5f5f5);
     border-bottom: 1px solid #eee;
     color: #444;
-    padding: 0px 30px;
+    padding: 0px 20px;
 }
 
 #container {
@@ -57,9 +57,8 @@ body {
 
 /* content */
 .content {
-    text-align: center;
     margin: 0 auto 20px;
-    max-width: 860px;
+    text-align: center;
 }
 
 .content .box {
@@ -77,7 +76,6 @@ body {
 
 #footer .footer-container {
     margin: 0 auto;
-    width: 600px;
     font-size: 0.8em;
 }
 
@@ -109,12 +107,13 @@ body {
 /* Logo style */
 .logo {
     color: #444;
-    cursor: default;
+    cursor: pointer;
     float: left;
     font-family: Impact, Charcoal, sans-serif;
     font-weight: bold;
     font-size: 1.5em;
     margin-top: 3px;
+    text-decoration: none;
 }
 
 /* header functionalities style */
@@ -135,25 +134,39 @@ body {
     color: #fafafa;
 }
 
-#playin,
-#searchin {
+#playcontent {
+    overflow: hidden;
+}
+
+#playcontent .input-box {
+    height: 30px;
+    overflow: hidden;
+}
+
+#playcontent .input-box input {
+    border: 1px solid #999;
+    box-sizing: border-box;
     color: #999;
     font-size: 1.2em;
-    width: 650px;
+    height: 100%;
+    width: 100%;
 }
 
-.box input {
-    border: 1px solid #999;
+#playcontent .icon-box {
+    background-color: #d1d1d1;
+    display: table;
+    float: right;
+    height: 30px;
+    width: 40px;
 }
 
-.box .icon {
-    background-color: #c1c1c1;
+#playcontent .icon-box .icon {
     color: #444;
-    padding: 6px 20px;
-    vertical-align: bottom;
+    display: table-cell;
+    vertical-align: middle;
 }
 
-.box .icon:hover {
+#playcontent .icon-box .icon:hover {
     background-color: #e1e1e1;
 }
 
@@ -161,8 +174,7 @@ body {
 #player-funcs {
     background-color: #333;
     border-radius: 25px;
-    min-width: 120px;
-    padding: 5px 30px;
+    padding: 3px 30px;
     text-align: left;
 }
 
@@ -195,7 +207,6 @@ body {
     border: 1px solid #afeeee;
     border-radius: 5px;
     padding: 15px 10px;
-    width: 980px;
 }
 
 #message-box .message.error {
@@ -265,4 +276,26 @@ body {
 
 #private-policy .box {
     text-align: left;
+}
+
+/* RWD */
+@media screen and (min-width: 1366px) {
+    .content,
+    #footer .footer-container {
+        width: 70%;
+    }
+}
+
+@media screen and (min-width: 1024px) and (max-width: 1366px) {
+    .content,
+    #footer .footer-container {
+        width: 90%;
+    }
+}
+
+@media screen and (max-width: 1024px) {
+    .content,
+    #footer .footer-container {
+        width: 100%;
+    }
 }
