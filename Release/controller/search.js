@@ -1,0 +1,1 @@
+﻿(function(b){var f=b("#content"),c,d;b("#btnmore",f).on("click",function(){var a=History.getState().data;a&&a.query&&loopedtube.searchVideo({q:a.query,pageToken:d?d:null},function(e){!c||c&&c!==a.query?(c=a.query,loopedtube.renderVideoList(b("#search-result"),e.items,!0)):loopedtube.renderVideoList(b("#search-result"),e.items,!1);d=e.next})})})(jQuery);

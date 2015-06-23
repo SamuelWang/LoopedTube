@@ -1,4 +1,7 @@
-﻿/*!
+﻿/// <reference path="jquery.history.js" />
+/// <reference path="jquery.utility.js" />
+
+/*!
  *  LoopedTube - lt.js
  *  https://github.com/SamuelWang/LoopedTube
  *  
@@ -8,253 +11,109 @@
  *  Date: 2015-03-31 22:20 GMT+0800
  */
 
-/// <reference path="jquery.utility.js" />
-
 (function (global) {
+    var loopedtube;
+
     //global namespace
     global.loopedtube = {
-        player: null, //YouTube Player
-        cuedVideo: null, //temporary video info after user input video id
-        currentVideo: null, //current playing video
-        loadYouTubeAPIStatus: 0, //specify if the YouTube API have loaded, 0: none, 1: loading, 2: loaded
-        isLoop: true, //specify if current video should to loop
-        musicMode: false, //specify if user turn on music mode
-        cued: false //specify if playing video at first
+        //YouTube Player
+        player: null,
+
+        //temporary video info after user input video id
+        cuedVideo: null,
+
+        //current playing video
+        currentVideo: null,
+
+        //current function
+        currentFunc: null,
+
+        //specify if the YouTube API have loaded, 0: none, 1: loading, 2: loaded
+        loadYouTubeAPIStatus: 0,
+
+        //the status of player loading, 0: none, 1: loading, 2: loaded
+        loadPlayerStatus: 0,
+
+        //specify if playing video at first
+        cued: false,
+
+        //specify if current video should to loop
+        isLoop: true,
+
+        //specify if user turn on music mode
+        musicMode: false
     };
 
-    var loopedtube = global.loopedtube;
+    loopedtube = global.loopedtube;
 
-    //Add "active" class if has no "active" class, or remove
-    loopedtube.toggleButtonActive = function ($elem, onAct, offAct) {
-        if (!$elem.hasClass('active')) {
-            $elem.addClass('active');
-            
-            if ($.isFunction(onAct)) {
-                onAct.call($elem);
+    /*---------- LoopedTube Functionalities ----------*/
+
+    //load function
+    loopedtube.loadFunc = function (func, done) {
+        //not reload again
+        if (func === loopedtube.currentFunc) {
+            if ($.isFunction(done)) {
+                done();
             }
-        } else {
-            $elem.removeClass('active');
 
-            if ($.isFunction(offAct)) {
-                offAct.call($elem);
-            }
-        }
-
-        return this;
-    };
-
-    //init status of every functionality
-    loopedtube.initialize = function () {
-        var $header = $('#header'),
-            $container = $('#container');
-
-        //fire header add video func button event
-        $('#add', $header)
-            .on('click', function () {
-                loopedtube.toggleButtonActive($(this), function () {
-                    var $playcontent = $('#playcontent');
-
-                    $playcontent.show();
-                    $playcontent.find('#playin').focus();
-                }, function () {
-                    $('#playcontent').hide();
-                });
-            });
-
-        $('#playcontent', $container)
-            .find('#playin')
-                .focus()
-                .on('keydown', function (evt) {
-                    if (evt.which === 13) {
-                        $('.fa-play', '#playcontent').trigger('click');
-                    }
-                })
-            .end()
-            .find('.fa-play')
-                .on('click', function () {
-                    var $playin = $('#playin'),
-                        cuedVideo = loopedtube.parseVideoId($playin.val());
-
-                    if (cuedVideo && cuedVideo.id) {
-                        loopedtube.getRecentVideoList().every(function (video) {
-                            if (video.id === cuedVideo.id) {
-                                cuedVideo = video;
-                                return false;
-                            }
-
-                            return true;
-                        });
-
-                        if (loopedtube.currentVideo && cuedVideo.id === loopedtube.currentVideo.id) {
-                            //if the video id of input is the same as current playing video, just restart the current video
-                            loopedtube.player.seekTo(loopedtube.currentVideo.startTime);
-                        } else {
-                            loopedtube.cuedVideo = cuedVideo;
-                            loopedtube.cueVideo();
-                        }
-
-                        $('#playcontent').hide();
-                        $('#add').removeClass('active');
-                    } else {
-                        loopedtube.showMessage('請輸入正確的影片ID或影片網址', 'alert');
-                        $playin.focus();
-                    }
-                });
-
-        $('#player-funcs', $container)
-            .find('.fa-repeat')
-                .on('click', function () {
-                    loopedtube.toggleButtonActive($(this), function () {
-                        loopedtube.isLoop = true;
-                    }, function () {
-                        loopedtube.isLoop = false;
-                    });
-                })
-            .end()
-            .find('.fa-arrows-h')
-                .on('click', function () {
-                    loopedtube.toggleButtonActive($(this), function () {
-                        $('#time-interval', $container).show();
-                    }, function () {
-                        $('#time-interval', $container).hide();
-                    });
-                })
-            .end()
-            .find('.fa-music')
-                .on('click', function () {
-                    loopedtube.toggleButtonActive($(this), function () {
-                        loopedtube.musicMode = true;
-
-                        if (loopedtube.player.getPlayerState() > -1) {
-                            loopedtube.player.setPlaybackQuality('small');
-                        }
-                    }, function () {
-                        loopedtube.musicMode = false;
-
-                        if (loopedtube.player.getPlayerState() > -1) {
-                            loopedtube.player.setPlaybackQuality('default');
-                        }
-                    });
-                });
-
-        $('#time-interval', $container)
-            .hide()
-            .on('change', function (evt) {
-                var $elem = $(this),
-                    $target = $(evt.target),
-                    id = $target.attr('id'),
-                    val = $target.val();
-
-                if (/(\d{1,2}):?(\d{1,2}):?(\d{1,2})/.test(val)) {
-                    var sec = $.timeToSecond(val);
-
-                    if (sec > 0) {
-                        switch (id) {
-                            case 'starttime':
-                                if (sec > loopedtube.currentVideo.duration) {
-                                    loopedtube.showMessage('開始時間不可大於影音總長度。', 'warning');
-                                    $target.val($.secondToTime(0));
-                                    return;
-                                } else {
-                                    loopedtube.currentVideo.startTime = sec;
-
-                                    //seek to start time if current time less than the start time that user set
-                                    if ((sec - loopedtube.player.getCurrentTime()) > 5) {
-                                        loopedtube.player.seekTo(sec);
-                                    }
-                                }
-                                break;
-
-                            case 'endtime':
-                                if (sec > loopedtube.currentVideo.duration) {
-                                    loopedtube.showMessage('結束時間不可大於影音總長度。', 'warning');
-                                    $target.val($.secondToTime(loopedtube.currentVideo.duration));
-                                    return;
-                                } else {
-                                    loopedtube.currentVideo.endTime = sec;
-                                }
-                                break;
-                        }
-
-                        $target.val($.secondToTime(sec));
-                        loopedtube.addRecentVideo(loopedtube.currentVideo);
-                    }
-                } else {
-                    loopedtube.showMessage('請輸入正確的時間格式。', 'error');
-                }
-            });
-
-        $('#message-box', $container).hide()
-            .find('.message')
-                .on('click', function () {
-                    $(this).parent().hide();
-                });
-
-        //render recent playing video lsit
-        loopedtube.renderRecentVedioList();
-
-        $('#recent-video .recent-video-header-trash').on('click', function () {
-            localStorage.clear();
-            loopedtube.renderRecentVedioList();
-        });
-
-        //load YouTube API
-        $.getScript('https://www.youtube.com/iframe_api');
-
-        loopedtube.loadYouTubeAPIStatus = 1;
-
-        return this;
-    };
-
-    //cue YouTube video to ready to play
-    loopedtube.cueVideo = function () {
-        if (loopedtube.loadYouTubeAPIStatus !== 2) {
             return;
         }
 
-        var cuedVideo = this.cuedVideo,
-            videoId = cuedVideo.id;
+        var path = 'view/' + func + '.html',
+        	$content = $('#content');
 
-        if (videoId) {
-            loopedtube.player.cueVideoById(videoId, cuedVideo.startTime, (loopedtube.musicMode) ? 'small' : 'default');
+        if (loopedtube.player) {
+            loopedtube.player.destroy();
+            loopedtube.player = null;
+            loopedtube.currentVideo = null;
+            loopedtube.cuedVideo = null;
+            loopedtube.loadPlayerStatus = 0;
+            loopedtube.cued = false;
         }
-        
-        return this;
-    };
 
-    //retrieve video datas
-    loopedtube.retrieveVideoData = function (videoId, callback, error) {
+        $content.empty().text('loading...');
+
+        //load template
         $.ajax({
-            url: 'https://www.googleapis.com/youtube/v3/videos?key=AIzaSyBcc3KRsP4a0NpQMymFkQNXkMXoROsTov4&&part=snippet&fields=items(snippet(title,thumbnails))&id=' + videoId,
             async: true,
-            dataType: 'json',
-            method: 'GET',
-            error: function (xhr, status, e) {
-                if ($.isFunction(error)) {
-                    error({
-                        code: status,
-                        message: e
+            url: path,
+            success: function (html) {
+                $content.empty();
+
+                if (!html) {
+                    loopedtube.showMessage('Failure to load function.', 'error');
+                    return;
+                }
+
+                try {
+                    //put template html string to DOM
+                    $('#content').html(html);
+
+                    $.ajax({
+                        async: true,
+                        cache: true,
+                        dataType: 'script',
+                        url: 'controller/' + func + '.js',
+                        success: function (data) {
+                            loopedtube.currentFunc = func;
+
+                            if ($.isFunction(done)) {
+                                done();
+                            }
+                        },
+                        error: function (xhr, status, error) {
+                            $content.empty();
+                            loopedtube.showMessage('Failure to load function.', 'error');
+                        }
                     });
+                } catch (e) {
+                    $content.empty();
+                    loopedtube.showMessage('Failure to load function.', 'error');
                 }
             },
-            success: function (data) {
-                if (data) {
-                    if (data.error && $.isFunction(error)) {
-                        //發生錯誤
-                        error(data.error);
-                    } else if ($.isArray(data.items) && $.isFunction(callback)) {
-                        //成功取回資料
-                        callback(data.items);
-                    }
-                } else {
-                    //沒有取回任何資料
-                    if ($.isFunction(error)) {
-                        error({
-                            code: "error",
-                            message: "nothing"
-                        });
-                    }
-                }
+            error: function (xhr, status, error) {
+                $content.empty();
+                loopedtube.showMessage('Failure to load function.', 'error');
             }
         });
     };
@@ -272,26 +131,26 @@
             });
 
             if (index === -1) {
-                loopedtube.retrieveVideoData(video.id, function (items) {
-                    video.title = items[0].snippet.title;
-                    video.thumbnail = items[0].snippet.thumbnails["default"];
+                loopedtube.getVideoData(video.id, function (items) {
+                    video.title = items[0].title;
+                    video.thumbnail = items[0].thumbnail;
 
-                    //max length is 50
-                    if (recentVideos.length > 50) {
-                        recentVideos.pop();
+                    //allowed max length is 100
+                    if (recentVideos.length > 99) {
+                        recentVideos = recentVideos.splice(0, 99);
                     }
 
                     recentVideos.unshift(video);
                     localStorage.setItem('recentVideos', JSON.stringify(recentVideos));
 
                     if ($.isFunction(callback)) {
-                        callback();
+                        callback(recentVideos);
                     }
                 });
             } else if (!video.title || !video.thumbnail) {
-                loopedtube.retrieveVideoData(video.id, function (items) {
-                    video.title = items[0].snippet.title;
-                    video.thumbnail = items[0].snippet.thumbnails["default"];
+                loopedtube.getVideoData(video.id, function (items) {
+                    video.title = items[0].title;
+                    video.thumbnail = items[0].thumbnail;
 
                     recentVideos.splice(index, 1);
                     recentVideos.unshift(video);
@@ -299,7 +158,7 @@
                     localStorage.setItem('recentVideos', JSON.stringify(recentVideos));
 
                     if ($.isFunction(callback)) {
-                        callback();
+                        callback(recentVideos);
                     }
                 });
             } else {
@@ -310,7 +169,7 @@
                 localStorage.setItem('recentVideos', JSON.stringify(recentVideos));
 
                 if ($.isFunction(callback)) {
-                    callback();
+                    callback(recentVideos);
                 }
             }
         } catch (e) {
@@ -331,54 +190,46 @@
         return recentVideos;
     };
 
-    //render recent playing video lsit
-    loopedtube.renderRecentVedioList = function () {
-        var recentVideos = loopedtube.getRecentVideoList(),
-            $recentVideo = $('#recent-video'),
-            $recentVideoList = $('.recent-video-list', $recentVideo),
+    //render video lsit
+    loopedtube.renderVideoList = function (list, videos, clear) {
+        var $listBody = list.find('.list-view-body'),
             $videoRecord;
 
-        if (recentVideos.length > 0) {
-            $recentVideoList.empty();
+        if ($.isArray(videos) && videos.length > 0) {
+            if (clear === true) {
+                $listBody.empty();
+            }
 
-            recentVideos.forEach(function (video) {
+            //render each video data
+            videos.forEach(function (video) {
                 if (!video.title || !video.thumbnail) {
                     return;
                 }
 
-                $videoRecord = $('<div class="recent-video-list-record clearfix"></div>').appendTo($recentVideoList);
+                $videoRecord = $('<div class="list-view-body-record clearfix"></div>');
 
-                $('<img class="recent-video-list-record-img" />')
+                $('<img class="list-view-body-record-img" />')
                     .attr('src', video.thumbnail.url)
                     .appendTo($videoRecord);
 
-                $('<div class="recent-video-list-record-title"></div>')
+                $('<div class="list-view-body-record-title"></div>')
                     .text(video.title)
                     .appendTo($videoRecord);
 
                 $videoRecord
                     .data('videoId', video.id)
                     .on('click', function () {
-                        var cuedVideo,
-                            $elem = $(this);
-
-                        loopedtube.getRecentVideoList().forEach(function (video) {
-                            if (video.id === $elem.data('videoId')) {
-                                cuedVideo = video;
-                            }
-                        });
-
-                        if (cuedVideo) {
-                            loopedtube.cuedVideo = cuedVideo;
-                            loopedtube.cueVideo();
-
-                            $('#playcontent').hide();
-                            $('#add').removeClass('active');
-                        }
+                        var $elem = $(this);
+                        
+                        History.pushState({ video: video }, '', '?video=' + video.id);
                     });
+
+                $videoRecord.appendTo($listBody);
             });
         } else {
-            $recentVideoList.text('無記錄');
+            if (clear === true) {
+                $listBody.text('無記錄');
+            }
         }
     };
 
@@ -406,6 +257,191 @@
         this.startWatchCurrentTime.intervalId = null;
     };
 
+    /*---------- LoopedTube Services ----------*/
+
+    //cue YouTube video to ready to play
+    loopedtube.cueVideo = function () {
+        if (loopedtube.loadPlayerStatus === 1 || loopedtube.loadYouTubeAPIStatus === 1) {
+            return;
+        }
+
+        if (loopedtube.loadPlayerStatus === 0) {
+            var screenWidth = document.documentElement.clientWidth,
+                playerWidth = 853,
+                playerHeight = 480;
+
+            if (screenWidth < 768) {
+                playerWidth = 320;
+                playerHeight = 240;
+            }
+
+            if (screenWidth >= 768 && screenWidth < 1024) {
+                playerWidth = 640;
+                playerHeight = 360;
+            }
+
+            if (screenWidth >= 1800) {
+                playerWidth = 1280;
+                playerHeight = 720;
+            }
+
+            loopedtube.loadPlayerStatus = 1;
+
+            //Initialize YouTube player
+            loopedtube.player = new YT.Player('player', {
+                width: playerWidth,
+                height: playerHeight,
+                events: {
+                    onReady: onPlayerReady
+                }
+            });
+
+            return;
+        }
+
+        var cuedVideo = this.cuedVideo,
+            videoId = cuedVideo.id,
+            $playerContent = $('#player-content');
+
+        if (videoId) {
+            if (!$playerContent.is(':visible')) {
+                $playerContent.show(600);
+            }
+            
+            loopedtube.player.cueVideoById(videoId, cuedVideo.startTime, (loopedtube.musicMode) ? 'small' : 'default');
+        }
+
+        return this;
+    };
+
+    //get video data
+    loopedtube.getVideoData = function (videoId, callback, error) {
+        $.ajax({
+            url: 'https://www.googleapis.com/youtube/v3/videos?key=AIzaSyBcc3KRsP4a0NpQMymFkQNXkMXoROsTov4&part=snippet&fields=items(id,snippet(title,thumbnails))&id=' + videoId,
+            async: true,
+            dataType: 'json',
+            method: 'GET',
+            error: function (xhr, status, e) {
+                if ($.isFunction(error)) {
+                    error({
+                        code: status,
+                        message: e
+                    });
+                }
+            },
+            success: function (data) {
+                if (data) {
+                    if (data.error && $.isFunction(error)) {
+                        //發生錯誤
+                        error(data.error);
+                    } else if ($.isArray(data.items) && $.isFunction(callback)) {
+                        data.items = data.items.map(function (item) {
+                            var video = {};
+
+                            video.id = item.id.videoId;
+                            video.title = item.snippet.title;
+                            video.thumbnail = item.snippet.thumbnails['default'];
+
+                            return video;
+                        });
+
+                        //成功取回資料
+                        callback(data.items);
+                    }
+                } else {
+                    //沒有取回任何資料
+                    if ($.isFunction(error)) {
+                        error({
+                            code: "error",
+                            message: "nothing"
+                        });
+                    }
+                }
+            }
+        });
+    };
+
+    //search video by keyword
+    loopedtube.searchVideo = function (config, callback, error) {
+        var url = 'https://www.googleapis.com/youtube/v3/search?' +
+                  'key=AIzaSyBcc3KRsP4a0NpQMymFkQNXkMXoROsTov4' +
+                  '&part=snippet&fields=nextPageToken,items(id,snippet(title,thumbnails))' +
+                  '&type=video&order=viewCount&maxResults=10' +
+                  '&q=' + encodeURIComponent(config.q);
+
+        if (config.pageToken) {
+            url += '&pageToken=' + config.pageToken;
+        }
+
+        $.ajax({
+            url: url,
+            async: true,
+            dataType: 'json',
+            method: 'GET',
+            error: function (xhr, status, e) {
+                if ($.isFunction(error)) {
+                    error({
+                        code: status,
+                        message: e
+                    });
+                }
+            },
+            success: function (data) {
+                if (data) {
+                    if (data.error && $.isFunction(error)) {
+                        //發生錯誤
+                        error(data.error);
+                    } else if ($.isArray(data.items) && $.isFunction(callback)) {
+                        data.items = data.items.map(function (item) {
+                            var video = {};
+
+                            video.id = item.id.videoId;
+                            video.title = item.snippet.title;
+                            video.thumbnail = item.snippet.thumbnails['default'];
+
+                            return video;
+                        });
+
+                        //成功取回資料
+                        callback({
+                            items: data.items,
+                            next: data.nextPageToken
+                        });
+                    }
+                } else {
+                    //沒有取回任何資料
+                    if ($.isFunction(error)) {
+                        error({
+                            code: "error",
+                            message: "nothing"
+                        });
+                    }
+                }
+            }
+        });
+    };
+
+    /*---------- LoopedTube Utilities ----------*/
+
+    //Add "active" class if has no "active" class, or remove
+    loopedtube.toggleButtonActive = function ($elem, onAct, offAct) {
+        if (!$elem.hasClass('active')) {
+            $elem.addClass('active');
+
+            if ($.isFunction(onAct)) {
+                onAct.call($elem);
+            }
+        } else {
+            $elem.removeClass('active');
+
+            if ($.isFunction(offAct)) {
+                offAct.call($elem);
+            }
+        }
+
+        return this;
+    };
+
     //show system message
     loopedtube.showMessage = function (msg, type) {
         var $messageBox = $('#message-box'),
@@ -431,10 +467,10 @@
                     break;
             }
 
-            $messageBox.show();
+            $messageBox.show(400, 'linear');
 
             this.showMessage.timeout = setTimeout(function () {
-                $messageBox.hide();
+                $messageBox.hide(400, 'linear');
             }, elapse * 1000)
         }
         
@@ -489,12 +525,22 @@
             video.id = str;
         }
 
+        //inspect whether there is record in recent list
+        loopedtube.getRecentVideoList().every(function (item) {
+            if (item.id === video.id) {
+                video = item;
+                return false;
+            }
+
+            return true;
+        });
+
         return video;
     };
 
 
 
-    //Video Class
+    /*---------- Video Class -----------*/
     loopedtube.Video = function (id) {
         if (!(this instanceof loopedtube.Video)) {
             //force this constructor to new correctly
